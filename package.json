@@ -15,7 +15,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/onury/geolocator.git"
+    "url": "https://github.com/sambaek/geolocator.git"
   },
   "keywords": [
     "geolocation",
