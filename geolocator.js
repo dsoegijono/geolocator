@@ -9,6 +9,12 @@
  */
 
 ;(function() {
+  /** Used to determine if values are of the language type `Object`. */
+  var objectTypes = {
+    'function': true,
+    'object': true
+  };
+
   /** Detect free variable `exports`. */
   var freeExports = (objectTypes[typeof exports] && exports && !exports.nodeType) ? exports : undefined;
 
@@ -39,6 +45,17 @@
   var root = freeGlobal ||
     ((freeWindow !== (thisGlobal && thisGlobal.window)) && freeWindow) ||
     freeSelf || thisGlobal || Function('return this')();
+
+  /**
+   * Checks if `value` is a global object.
+   *
+   * @private
+   * @param {*} value The value to check.
+   * @returns {null|Object} Returns `value` if it's a global object, else `null`.
+   */
+  function checkGlobal(value) {
+    return (value && value.Object === Object) ? value : null;
+  }
 
   /*--------------------------------------------------------------------------*/
 
