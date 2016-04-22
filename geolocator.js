@@ -78,7 +78,7 @@
       // Google Maps URL.
       googleLoaderURL = 'https://www.google.com/jsapi',
       // Google Maps version to be loaded
-      mapsVersion = '3.18',
+      mapsVersion = '3.23',
       // Array of source services that provide location-by-IP information.
       ipGeoSources = [
         { url: '//freegeoip.net/json/', cbParam: 'callback' }, // 0
