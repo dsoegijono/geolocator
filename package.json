@@ -5,11 +5,7 @@
   "directories": {
     "example": "example"
   },
-  "files": [
-    "src",
-    "example",
-    "LICENSE"
-  ],
+  "main": "geolocator.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
