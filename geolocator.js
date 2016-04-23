@@ -73,22 +73,12 @@
       // Storage for the callback function to be executed when the location
       // could not be fetched due to an error.
       onError,
-      // HTML element ID for the Google Maps.
-      mCanvasId,
       // Google Maps URL.
       googleLoaderURL = 'https://www.google.com/jsapi',
       // Google Maps version to be loaded
       mapsVersion = '3.23',
-      // Array of source services that provide location-by-IP information.
-      ipGeoSources = [
-        { url: '//freegeoip.net/json/', cbParam: 'callback' }, // 0
-        { url: '//www.geoplugin.net/json.gp', cbParam: 'jsoncallback' }, // 1
-        { url: '//geoiplookup.wikimedia.org/', cbParam: '' } // 2
-        // maxmind Not implemented. Requires attribution.
-        // See http://dev.maxmind.com/geoip/javascript
-        //,{ url: 'http://j.maxmind.com/app/geoip.js', cbParam: '' }
-      ],
-      defaultSourceIndex = 1, // (geoplugin)
+      // wikimedia provides location-by-IP information.
+      ipGeoSource = '//geoiplookup.wikimedia.org/',
       // The index of the current IP source service.
       sourceIndex;
 
@@ -150,35 +140,6 @@
       }
     }
 
-    /** Draws the map from the fetched geo information.
-     */
-    function drawMap(elemId, mapOptions, infoContent) {
-      var map, marker, infowindow,
-        elem = document.getElementById(elemId);
-      if (elem) {
-        map = new google.maps.Map(elem, mapOptions);
-        marker = new google.maps.Marker({
-          position: mapOptions.center,
-          map: map
-        });
-        infowindow = new google.maps.InfoWindow();
-        infowindow.setContent(infoContent);
-        //infowindow.open(map, marker);
-        google.maps.event.addListener(marker, 'click', function() {
-          infowindow.open(map, marker);
-        });
-        geolocator.location.map = {
-          canvas: elem,
-          map: map,
-          options: mapOptions,
-          marker: marker,
-          infoWindow: infowindow
-        };
-      } else {
-        geolocator.location.map = null;
-      }
-    }
-
     /** Runs a reverse-geo lookup for the specified lat-lon coords.
      */
     function reverseGeoLookup(latlng, callback) {
@@ -205,13 +166,14 @@
             o[c.types[0] + '_s'] = c.short_name;
           }
         }
+
         geolocator.location.formattedAddress = data[0].formatted_address;
         geolocator.location.address = {
           street: o.route || '',
           neighborhood: o.neighborhood || '',
           town: o.sublocality || '',
           city: o.locality || '',
-          region: o.administrative_area_level_1 || '',
+          region: o.administrative_area_level_1_s || '',
           country: o.country || '',
           countryCode: o.country_s || '',
           postalCode: o.postal_code || '',
@@ -227,13 +189,7 @@
 
       function onGeoLookup(data) {
         fetchDetailsFromLookup(data);
-        var zoom = geolocator.location.ipGeoSource === null ? 14 : 7, //zoom out if we got the lcoation from IP.
-          mapOptions = {
-            zoom: zoom,
-            center: latlng,
-            mapTypeId: 'roadmap'
-          };
-        drawMap(mCanvasId, mapOptions, data[0].formatted_address);
+
         if (onSuccess) { onSuccess.call(null, geolocator.location); }
       }
       reverseGeoLookup(latlng, onGeoLookup);
@@ -245,12 +201,7 @@
       geolocator.location = null;
 
       function fallback(error) {
-        var ipsIndex = fallbackToIP === true ? 0 : (typeof fallbackToIP === 'number' ? fallbackToIP : -1);
-        if (ipsIndex >= 0) {
-          geolocator.locateByIP(onSuccess, onError, ipsIndex, mCanvasId);
-        } else {
-          if (onError) { onError(error); }
-        }
+        geolocator.locateByIP(onSuccess, onError);
       }
 
       function geoSuccess(position) {
@@ -273,65 +224,6 @@
       }
     }
 
-    /** Builds the location object from the source data.
-     */
-    function buildLocation(ipSourceIndex, data) {
-      switch (ipSourceIndex) {
-        case 0: // freegeoip
-          geolocator.location = {
-            coords: {
-              latitude: data.latitude,
-              longitude: data.longitude
-            },
-            address: {
-              city: data.city,
-              country: data.country_name,
-              countryCode: data.country_code,
-              region: data.region_name
-            }
-          };
-          break;
-        case 1: // geoplugin
-          geolocator.location = {
-            coords: {
-              latitude: data.geoplugin_latitude,
-              longitude: data.geoplugin_longitude
-            },
-            address: {
-              city: data.geoplugin_city,
-              country: data.geoplugin_countryName,
-              countryCode: data.geoplugin_countryCode,
-              region: data.geoplugin_regionName
-            }
-          };
-          break;
-        case 2: // Wikimedia
-          geolocator.location = {
-            coords: {
-              latitude: data.lat,
-              longitude: data.lon
-            },
-            address: {
-              city: data.city,
-              country: '',
-              countryCode: data.country,
-              region: ''
-            }
-          };
-          break;
-      }
-      if (geolocator.location) {
-        geolocator.location.coords.accuracy = null;
-        geolocator.location.coords.altitude = null;
-        geolocator.location.coords.altitudeAccuracy = null;
-        geolocator.location.coords.heading = null;
-        geolocator.location.coords.speed = null;
-        geolocator.location.timestamp = new Date().getTime();
-        geolocator.location.ipGeoSource = ipGeoSources[ipSourceIndex];
-        geolocator.location.ipGeoSource.data = data;
-      }
-    }
-
     /** The callback that is executed when the location data is fetched from the source.
      */
     function onGeoSourceCallback(data) {
@@ -340,38 +232,22 @@
       delete geolocator.__ipscb;
 
       function gLoadCallback() {
-        if (sourceIndex === 2) { // Wikimedia
-          if (window.Geo !== undefined) {
-            buildLocation(sourceIndex, window.Geo);
-            delete window.Geo;
-            initialized = true;
-          }
-        } else {
-          if (data !== undefined && typeof data !== 'string') {
-            buildLocation(sourceIndex, data);
-            initialized = true;
-          }
+        if (window.Geo !== undefined) {
+          geolocator.location = JSON.parse(JSON.stringify(window.Geo));
+          delete window.Geo;
+          initialized = true;
         }
 
-        if (initialized === true) {
-          finalize(geolocator.location.coords);
-        } else {
-          if (onError) { onError(new Error(data || 'Could not get location.')); }
+        if (initialized == true) {
+          if (onSuccess) {
+            onSuccess.call(null, geolocator.location);
+          }
+        } else if (onError) {
+          onError(new Error(data || 'Could not get location.'));
         }
       }
 
-      loadGoogleMaps(gLoadCallback);
-    }
-
-    /** Loads the (jsonp) source. If the source does not support json-callbacks;
-     *  the callback is executed dynamically when the source is loaded completely.
-     */
-    function loadIpGeoSource(source) {
-      if (source.cbParam === undefined || source.cbParam === null || source.cbParam === '') {
-        loadScript(source.url, onGeoSourceCallback, true);
-      } else {
-        loadScript(source.url + '?' + source.cbParam + '=geolocator.__ipscb', undefined, true); //ip source callback
-      }
+      gLoadCallback();
     }
 
     return {
@@ -390,10 +266,9 @@
 
       /** Gets the geo-location by requesting user's permission.
        */
-      locate: function(successCallback, errorCallback, fallbackToIP, html5Options, mapCanvasId) {
+      locate: function(successCallback, errorCallback, fallbackToIP, html5Options) {
         onSuccess = successCallback;
         onError = errorCallback;
-        mCanvasId = mapCanvasId;
 
         function gLoadCallback() { getPosition(fallbackToIP, html5Options); }
         loadGoogleMaps(gLoadCallback);
@@ -401,14 +276,11 @@
 
       /** Gets the geo-location from the user's IP.
        */
-      locateByIP: function(successCallback, errorCallback, ipSourceIndex, mapCanvasId) {
-        sourceIndex = (typeof ipSourceIndex !== 'number' ||
-          (ipSourceIndex < 0 || ipSourceIndex >= ipGeoSources.length)) ? defaultSourceIndex : ipSourceIndex;
+      locateByIP: function(successCallback, errorCallback) {
         onSuccess = successCallback;
         onError = errorCallback;
-        mCanvasId = mapCanvasId;
         geolocator.__ipscb = onGeoSourceCallback;
-        loadIpGeoSource(ipGeoSources[sourceIndex]);
+        loadScript(ipGeoSource, onGeoSourceCallback, true);
       },
 
       /** Checks whether the type of the given object is HTML5
