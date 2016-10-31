@@ -78,7 +78,7 @@
       // Google Maps version to be loaded
       mapsVersion = '3.23',
       // wikimedia provides location-by-IP information.
-      ipGeoSource = '//geoiplookup.wikimedia.org/',
+      ipGeoSource = '//bits.wikimedia.org/geoiplookup',
       // The index of the current IP source service.
       sourceIndex;
 
@@ -324,4 +324,3 @@
     root.geolocator = geolocator;
   }
 }.call(this));
-
